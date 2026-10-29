@@ -1,27 +1,112 @@
 {% extends 'base.html' %}
 {% from 'macros.html' import icon, csrf, item_card %}
-{% block title %}My board{% endblock %}
+{% block title %}Study board{% endblock %}
 {% block content %}
-<section class="page-heading"><div><p class="eyebrow">A SPACE FOR YOUR NEXT IDEA</p><h1>Your workspace<span class="heading-dot">.</span></h1><p class="page-intro">Big ideas start with a few small steps. What will you work on today?</p></div><a class="button button-primary" href="{{ url_for('new_item') }}">{{ icon('plus', 18) }}New item</a></section>
-<section class="overview-strip" aria-label="Workspace summary">
-  <div class="overview-metric"><span class="metric-icon">{{ icon('folder', 23) }}</span><div><p>Open items</p><strong>{{ counts.open }}<small>Things to make happen</small></strong></div></div>
-  <div class="overview-metric"><span class="metric-icon lavender">{{ icon('spark', 23) }}</span><div><p>In progress</p><strong>{{ counts.doing }}<small>A little momentum</small></strong></div></div>
-  <div class="overview-metric"><span class="metric-icon peach">{{ icon('check-circle', 23) }}</span><div><p>Completed</p><strong>{{ counts.done }}<small>Small wins count</small></strong></div></div>
-  <div class="overview-progress"><div class="progress-label"><span>Your progress</span><strong>{{ counts.progress }}%</strong></div><progress max="100" value="{{ counts.progress }}" aria-label="Completed items">{{ counts.progress }}%</progress><small>{{ counts.done }} of {{ counts.total }} items completed</small></div>
+<section class="page-heading hero">
+  <div class="hero-copy">
+    <p class="eyebrow">YOUR SEMESTER, IN ONE PLACE</p>
+    <h1>Keep the work moving<span class="heading-dot">.</span></h1>
+    <p class="page-intro">StudyStack keeps coursework visible and slip-ups recoverable. The newest task you remove is always the first one you get back.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button button-primary" href="{{ url_for('new_item') }}">{{ icon('plus', 18) }}New study task</a>
+    <a class="button button-secondary" href="{{ url_for('recovery') }}">{{ icon('archive', 17) }}Open recovery stack</a>
+  </div>
 </section>
+
+<section class="overview-strip" aria-label="Study workspace summary">
+  <div class="overview-metric metric-open"><span class="metric-icon">{{ icon('folder', 22) }}</span><div><p>Open tasks</p><strong>{{ counts.open }}<small>Still on your desk</small></strong></div></div>
+  <div class="overview-metric metric-doing"><span class="metric-icon">{{ icon('spark', 22) }}</span><div><p>In progress</p><strong>{{ counts.doing }}<small>Active study sessions</small></strong></div></div>
+  <div class="overview-metric metric-done"><span class="metric-icon">{{ icon('check-circle', 22) }}</span><div><p>Completed</p><strong>{{ counts.done }}<small>Work you can close</small></strong></div></div>
+  <div class="overview-metric metric-recovery"><span class="metric-icon">{{ icon('archive', 22) }}</span><div><p>In recovery</p><strong>{{ counts.archived }}<small>Newest returns first</small></strong></div></div>
+  <div class="overview-progress"><div class="progress-label"><span>Semester progress</span><strong>{{ counts.progress }}%</strong></div><progress max="100" value="{{ counts.progress }}" aria-label="Completed study tasks">{{ counts.progress }}%</progress><small>{{ counts.done }} of {{ counts.total }} tasks completed</small></div>
+</section>
+
 <section class="board-section" aria-labelledby="board-heading">
-  <div class="section-heading"><div class="section-title"><h2 id="board-heading">My board</h2><span class="subtle-count">{{ counts.total }} items</span></div><div class="view-switch" aria-label="Display layout"><a href="{{ url_for('index', view='board', q=query, status=selected_status) }}" class="{{ 'selected' if view == 'board' else '' }}" aria-label="Board view" {% if view == 'board' %}aria-current="true"{% endif %}>{{ icon('grid', 17) }}<span>Board</span></a><a href="{{ url_for('index', view='list', q=query, status=selected_status) }}" class="{{ 'selected' if view == 'list' else '' }}" aria-label="List view" {% if view == 'list' %}aria-current="true"{% endif %}>{{ icon('list', 17) }}<span>List</span></a></div></div>
-  <div class="board-toolbar"><nav class="filter-tabs" aria-label="Filter by status"><a href="{{ url_for('index', view=view, q=query) }}" class="{{ 'selected' if not selected_status else '' }}">All items<span>{{ counts.total }}</span></a>{% for key, label in statuses.items() %}<a href="{{ url_for('index', view=view, q=query, status=key) }}" class="{{ 'selected' if selected_status == key else '' }}">{{ label }}</a>{% endfor %}</nav><form class="search-form" method="get" action="{{ url_for('index') }}">{{ icon('search', 17) }}<label class="sr-only" for="search-items">Search items</label><input id="search-items" name="q" value="{{ query }}" placeholder="Search anything..." maxlength="120"><input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="status" value="{{ selected_status }}"><button class="search-submit" type="submit" aria-label="Search">↵</button></form></div>
-  {% if query %}<p class="search-results">{{ items|length }} result{{ 's' if items|length != 1 else '' }} for <strong>“{{ query }}”</strong><a href="{{ url_for('index', view=view, status=selected_status) }}">Clear search</a></p>{% endif %}
+  <div class="section-heading">
+    <div class="section-title"><h2 id="board-heading">Study board</h2><span class="subtle-count">{{ items|length }} task{{ 's' if items|length != 1 else '' }}</span></div>
+    <div class="view-switch" aria-label="Display layout">
+      <a href="{{ url_for('index', view='board', q=query, status=selected_status, course=selected_course) }}" class="{{ 'selected' if view == 'board' else '' }}" aria-label="Board view" {% if view == 'board' %}aria-current="true"{% endif %}>{{ icon('grid', 17) }}<span>Board</span></a>
+      <a href="{{ url_for('index', view='list', q=query, status=selected_status, course=selected_course) }}" class="{{ 'selected' if view == 'list' else '' }}" aria-label="List view" {% if view == 'list' %}aria-current="true"{% endif %}>{{ icon('list', 17) }}<span>List</span></a>
+    </div>
+  </div>
+
+  <div class="board-toolbar">
+    <nav class="filter-tabs" aria-label="Filter by status">
+      <a href="{{ url_for('index', view=view, q=query, course=selected_course) }}" class="{{ 'selected' if not selected_status else '' }}">All tasks<span>{{ counts.total }}</span></a>
+      {% for key, label in statuses.items() %}<a href="{{ url_for('index', view=view, q=query, status=key, course=selected_course) }}" class="{{ 'selected' if selected_status == key else '' }}">{{ label }}</a>{% endfor %}
+    </nav>
+    <div class="toolbar-filters">
+      <form class="course-filter" method="get" action="{{ url_for('index') }}">
+        <label for="course-filter">Course</label>
+        <select id="course-filter" name="course">
+          <option value="">All courses</option>
+          {% for course in courses %}<option value="{{ course }}" {{ 'selected' if selected_course == course else '' }}>{{ course }}</option>{% endfor %}
+        </select>
+        <input type="hidden" name="q" value="{{ query }}">
+        <input type="hidden" name="view" value="{{ view }}">
+        <input type="hidden" name="status" value="{{ selected_status }}">
+        <button class="button button-ghost" type="submit">Apply</button>
+      </form>
+      <form class="search-form" method="get" action="{{ url_for('index') }}">
+        {{ icon('search', 17) }}
+        <label class="sr-only" for="search-items">Search study tasks</label>
+        <input id="search-items" name="q" value="{{ query }}" placeholder="Search tasks, courses, notes..." maxlength="120">
+        <input type="hidden" name="view" value="{{ view }}">
+        <input type="hidden" name="status" value="{{ selected_status }}">
+        <input type="hidden" name="course" value="{{ selected_course }}">
+        <button class="search-submit" type="submit" aria-label="Search">↵</button>
+      </form>
+    </div>
+  </div>
+
+  {% if query %}<p class="search-results">{{ items|length }} result{{ 's' if items|length != 1 else '' }} for <strong>“{{ query }}”</strong><a href="{{ url_for('index', view=view, status=selected_status, course=selected_course) }}">Clear search</a></p>{% endif %}
+  {% if selected_course %}<p class="filter-summary">Showing tasks for <strong>{{ selected_course }}</strong><a href="{{ url_for('index', view=view, q=query, status=selected_status) }}">Clear course</a></p>{% endif %}
+
   {% if view == 'board' %}
   <div class="kanban-board">
     {% for key, label in statuses.items() %}{% if not selected_status or selected_status == key %}
-    <section class="kanban-lane lane-{{ key }}" aria-labelledby="lane-{{ key }}"><header class="lane-header"><h3 id="lane-{{ key }}"><span class="status-dot"></span>{{ label }}<span class="lane-count">{{ groups[key]|length }}</span></h3><a href="{{ url_for('new_item', status=key) }}" class="icon-button" aria-label="Add item to {{ label }}">{{ icon('plus', 17) }}</a></header><div class="lane-items">{% for item in groups[key] %}{{ item_card(item, csrf_token, statuses) }}{% else %}<div class="lane-empty">{{ icon('leaf', 27) }}<p>A little room for something new.</p></div>{% endfor %}</div><a class="add-in-lane" href="{{ url_for('new_item', status=key) }}">{{ icon('plus', 16) }}Add item</a></section>
+    <section class="kanban-lane lane-{{ key }}" aria-labelledby="lane-{{ key }}">
+      <header class="lane-header"><h3 id="lane-{{ key }}"><span class="status-dot"></span>{{ label }}<span class="lane-count">{{ groups[key]|length }}</span></h3><a href="{{ url_for('new_item', status=key) }}" class="icon-button" aria-label="Add task to {{ label }}">{{ icon('plus', 17) }}</a></header>
+      <div class="lane-items">{% for item in groups[key] %}{{ item_card(item, csrf_token, statuses) }}{% else %}<div class="lane-empty">{{ icon('leaf', 27) }}<p>Nothing here. A little breathing room.</p></div>{% endfor %}</div>
+      <a class="add-in-lane" href="{{ url_for('new_item', status=key) }}">{{ icon('plus', 16) }}Add study task</a>
+    </section>
     {% endif %}{% endfor %}
   </div>
   {% else %}
-  <div class="list-view"><table class="items-table"><thead><tr><th>Item</th><th>Status</th><th>Priority</th><th>Due date</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>{% for item in items %}<tr><td><a class="table-title" href="{{ url_for('edit_item', item_id=item.id) }}">{{ item.title }}</a><small>{{ item.category }}</small></td><td><span class="status-label status-{{ item.status }}">{{ statuses[item.status] }}</span></td><td><span class="priority-label priority-{{ item.priority }}"><i></i>{{ item.priority|capitalize }}</span></td><td class="table-date">{{ item.due_date|short_date }}</td><td><div class="table-actions"><a class="icon-button" href="{{ url_for('edit_item', item_id=item.id) }}" aria-label="Edit {{ item.title }}">{{ icon('edit', 16) }}</a><form method="post" action="{{ url_for('remove_item', item_id=item.id) }}">{{ csrf(csrf_token) }}<button class="icon-button" aria-label="Move {{ item.title }} to recovery tray">{{ icon('archive', 17) }}</button></form></div></td></tr>{% else %}<tr><td colspan="5" class="table-empty">No items match this view. Try a different search or add an item.</td></tr>{% endfor %}</tbody></table></div>
+  <div class="list-view">
+    <table class="items-table">
+      <thead><tr><th>Task</th><th>Course</th><th>Status</th><th>Priority</th><th>Due</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><a class="table-title" href="{{ url_for('edit_item', item_id=item.id) }}">{{ item.title }}</a><small>{{ item.category }}</small></td>
+          <td class="table-course">{{ item.course }}</td>
+          <td><span class="status-label status-{{ item.status }}">{{ statuses[item.status] }}</span></td>
+          <td><span class="priority-label priority-{{ item.priority }}"><i></i>{{ item.priority|capitalize }}</span></td>
+          <td class="table-date">{{ item.due_date|short_date }}</td>
+          <td><div class="table-actions"><a class="icon-button" href="{{ url_for('edit_item', item_id=item.id) }}" aria-label="Edit {{ item.title }}">{{ icon('edit', 16) }}</a><form method="post" action="{{ url_for('remove_item', item_id=item.id) }}">{{ csrf(csrf_token) }}<button class="icon-button" aria-label="Move {{ item.title }} to recovery stack">{{ icon('archive', 17) }}</button></form></div></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="table-empty">No tasks match this view. Try another course, clear the search, or add a study task.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 </section>
-<div class="bottom-grid"><section class="recent-section"><div class="section-heading"><h2>Recent activity</h2><a class="quiet-link" href="{{ url_for('activity') }}">View all{{ icon('arrow', 15) }}</a></div>{% for event in recent_events %}<div class="recent-event"><span class="event-dot event-{{ event.kind }}"></span><div><span>{{ event.title }}</span><small>{{ event.kind|capitalize }} · {{ event.created_at|event_date }}</small></div></div>{% endfor %}</section><aside class="remix-note"><span class="remix-symbol">✳</span><p class="eyebrow">YOUR NEXT CHAPTER</p><h3>Good bones.<br>Endless possibilities.</h3><p>Turn this little workspace into something that feels entirely your own.</p><a href="{{ url_for('guide') }}">Explore the student guide{{ icon('arrow', 17) }}</a></aside></div>
+
+<div class="bottom-grid">
+  <section class="recent-section surface">
+    <div class="section-heading"><h2>Recent activity</h2><a class="quiet-link" href="{{ url_for('activity') }}">View all{{ icon('arrow', 15) }}</a></div>
+    {% for event in recent_events %}<div class="recent-event"><span class="event-dot event-{{ event.kind }}"></span><div><span>{{ event.title }}</span><small>{{ event.kind|capitalize }} · {{ event.created_at|event_date }}</small></div></div>{% else %}<p class="section-description">Your next action will appear here.</p>{% endfor %}
+  </section>
+  <aside class="stack-explainer">
+    <p class="eyebrow">A SAFETY NET, NOT A JUNK DRAWER</p>
+    <h3>How the recovery stack works</h3>
+    <p>Remove a task and it lands on top. Restoring always takes the newest task first, so a quick undo behaves like undo.</p>
+    <div class="mini-stack" aria-hidden="true"><span>C · newest</span><span>B</span><span>A · oldest</span></div>
+    <a href="{{ url_for('recovery') }}">See what is on top{{ icon('arrow', 17) }}</a>
+  </aside>
+</div>
 {% endblock %}

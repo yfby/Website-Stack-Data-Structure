@@ -4,6 +4,9 @@ Tables: database/schema.sql
 Saved data: database/data/workbench.sqlite3 (created automatically)
 The backend calls these functions; frontend files never connect to SQLite.
 No database server or ORM is required.
+
+StudyStack additive migration: existing databases receive an ``items.course``
+column with a safe default. No records are dropped or rewritten.
 """
 
 import json
@@ -45,7 +48,23 @@ def init_app(app):
         connection = get_db()
         connection.execute("PRAGMA journal_mode = WAL")
         connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        migrate_schema(connection)
         connection.commit()
+
+
+def migrate_schema(connection):
+    """Apply additive changes that CREATE TABLE IF NOT EXISTS cannot make.
+
+    Existing installations keep every item and workspace. The new course field
+    defaults to 'General' until the user edits that task.
+    """
+    columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(items)")
+    }
+    if "course" not in columns:
+        connection.execute(
+            "ALTER TABLE items ADD COLUMN course TEXT NOT NULL DEFAULT 'General'"
+        )
 
 
 @contextmanager
@@ -84,40 +103,71 @@ def get_workspace(workspace_id):
 
 
 def seed_items(connection, workspace_id):
-    """Sample items belong to this browser's workspace only."""
+    """Eight fictional college study tasks for this browser's workspace only."""
     today = date.today()
     examples = [
-        ("Collect a little inspiration", "Save three references and note what makes each one useful.", "Research", "todo", "low", 5),
-        ("Sketch the first screen", "A rough sketch is enough. Start with the information people need most.", "Design", "todo", "medium", 3),
-        ("Write a short project brief", "Describe who your project is for and the problem it solves.", "Planning", "todo", "high", 1),
-        ("Build a first prototype", "Connect a small idea to a working feature. Keep it simple.", "Build", "doing", "high", 2),
-        ("Find a visual direction", "Choose a palette, a type style, and a layout that fit your idea.", "Design", "doing", "medium", 4),
-        ("Choose a project name", "Give your idea a name you would be happy to put on the front page.", "Planning", "done", "low", 0),
+        ("Review linked-list notes",
+         "Redraw the pointer diagrams from Tuesday's lecture and mark the two spots that still feel fuzzy.",
+         "CS 210 · Data Structures", "Lecture review", "todo", "high", 1),
+        ("Draft CS 210 problem set 4",
+         "Finish questions 2–5, then compare answers with the study-group notes before submitting.",
+         "CS 210 · Data Structures", "Assignment", "doing", "high", 3),
+        ("Write the osmosis lab report",
+         "Turn the bench observations into a short results section before Friday's lab meeting.",
+         "BIO 120 · Cell Biology", "Lab report", "todo", "medium", 2),
+        ("Build a Calculus II formula sheet",
+         "One page for series tests, convergence rules, and the worked examples from class.",
+         "MATH 152 · Calculus II", "Exam prep", "todo", "high", 5),
+        ("Prepare slides for the group presentation",
+         "Add the three usability findings and a clean closing slide for the team review.",
+         "COMM 210 · Public Speaking", "Group project", "doing", "medium", 4),
+        ("Read chapters 6–8 of the psychology text",
+         "Take margin notes on memory and attention, and bring two questions to seminar.",
+         "PSY 101 · Intro Psychology", "Reading", "todo", "low", 7),
+        ("Submit the technical-writing peer review",
+         "Leave one strength and one concrete revision note for each partner.",
+         "ENG 240 · Technical Writing", "Assignment", "done", "low", 0),
+        ("Update the résumé for the career fair",
+         "Add the database project and trim the high-school section to two lines.",
+         "Career center", "Career prep", "done", "medium", -1),
     ]
     now = timestamp()
-    for title, description, category, status, priority, days in examples:
+    for title, description, course, category, status, priority, days in examples:
         connection.execute(
             """INSERT INTO items
-            (workspace_id, title, description, category, status, priority,
+            (workspace_id, title, description, course, category, status, priority,
              due_date, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (workspace_id, title, description, category, status, priority,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (workspace_id, title, description, course, category, status, priority,
              (today + timedelta(days=days)).isoformat(), now, now),
         )
 
 
-def list_items(workspace_id, query="", status="", archived=False):
+def list_items(workspace_id, query="", status="", archived=False, course=""):
     sql = "SELECT * FROM items WHERE workspace_id = ? AND archived = ?"
     values = [workspace_id, int(archived)]
     if query:
         literal = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        sql += " AND (title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\' OR category LIKE ? ESCAPE '\\')"
-        values.extend(["%" + literal + "%"] * 3)
+        sql += " AND (title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\' OR category LIKE ? ESCAPE '\\' OR course LIKE ? ESCAPE '\\')"
+        values.extend(["%" + literal + "%"] * 4)
     if status:
         sql += " AND status = ?"
         values.append(status)
+    if course:
+        sql += " AND course = ?"
+        values.append(course)
     sql += " ORDER BY COALESCE(removed_at, created_at) DESC, id DESC"
     return [dict(row) for row in get_db().execute(sql, values).fetchall()]
+
+
+def list_courses(workspace_id):
+    """Distinct course labels for the study filter and form suggestions."""
+    return [row["course"] for row in get_db().execute(
+        """SELECT DISTINCT course FROM items
+        WHERE workspace_id = ? AND archived = 0
+        ORDER BY course COLLATE NOCASE""",
+        (workspace_id,),
+    ).fetchall()]
 
 
 def get_item(workspace_id, item_id, archived=None):
@@ -185,11 +235,12 @@ def create_item(connection, workspace_id, values):
     """Insert a validated item and return its database ID."""
     now = timestamp()
     cursor = connection.execute(
-        """INSERT INTO items (workspace_id, title, description, category,
+        """INSERT INTO items (workspace_id, title, description, course, category,
         status, priority, due_date, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (workspace_id, values["title"], values["description"], values["category"],
-         values["status"], values["priority"], values["due_date"] or None, now, now),
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (workspace_id, values["title"], values["description"], values["course"],
+         values["category"], values["status"], values["priority"],
+         values["due_date"] or None, now, now),
     )
     return cursor.lastrowid
 
@@ -197,10 +248,11 @@ def create_item(connection, workspace_id, values):
 def update_item(connection, workspace_id, item_id, values):
     """Save validated changes to this workspace's active item."""
     connection.execute(
-        """UPDATE items SET title=?, description=?, category=?, status=?,
+        """UPDATE items SET title=?, description=?, course=?, category=?, status=?,
         priority=?, due_date=?, updated_at=? WHERE id=? AND workspace_id=? AND archived=0""",
-        (values["title"], values["description"], values["category"], values["status"],
-         values["priority"], values["due_date"] or None, timestamp(), item_id, workspace_id),
+        (values["title"], values["description"], values["course"], values["category"],
+         values["status"], values["priority"], values["due_date"] or None,
+         timestamp(), item_id, workspace_id),
     )
 
 

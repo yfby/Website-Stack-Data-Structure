@@ -1,7 +1,7 @@
-"""BACKEND: Workbench browser routes, input validation, and feature logic.
+"""BACKEND: StudyStack browser routes, input validation, and feature logic.
 
 A form in frontend/templates/ sends a request to a route in this file.
-The route calls backend/stack.py for recovery behavior and database/db.py
+The route calls backend/stack.py for LIFO recovery behavior and database/db.py
 for storage, then renders another frontend template.
 
 Start the website with run.py or START_WEBSITE.bat from the project root.
@@ -20,9 +20,19 @@ from backend.stack import HistoryBuffer
 from backend.config import DATABASE_PATH, FRONTEND_DIR, INSTANCE_DIR
 
 
-STATUSES = {"todo": "To do", "doing": "In progress", "done": "Done"}
+STATUSES = {"todo": "To study", "doing": "In progress", "done": "Completed"}
 PRIORITIES = {"low": "Low", "medium": "Medium", "high": "High"}
-ACCENTS = {"pine": "Pine green", "blue": "Ocean blue", "plum": "Soft plum", "clay": "Warm clay"}
+ACCENTS = {"pine": "Library green", "blue": "Midnight blue", "plum": "Notebook plum", "clay": "Coral clay"}
+CATEGORIES = [
+    "Lecture review",
+    "Assignment",
+    "Lab report",
+    "Exam prep",
+    "Group project",
+    "Reading",
+    "Presentation",
+    "Career prep",
+]
 
 
 def create_app(test_config=None):
@@ -73,7 +83,8 @@ def create_app(test_config=None):
             return {"workspace": {"name": "My workspace", "accent": "pine"},
                     "counts": {"total": 0, "archived": 0},
                     "csrf_token": session.get("csrf_token", ""),
-                    "statuses": STATUSES, "priorities": PRIORITIES, "accents": ACCENTS}
+                    "statuses": STATUSES, "priorities": PRIORITIES, "accents": ACCENTS,
+                    "categories": CATEGORIES}
         return {
             "workspace": db.get_workspace(g.workspace_id),
             "counts": db.stats(g.workspace_id),
@@ -81,6 +92,7 @@ def create_app(test_config=None):
             "statuses": STATUSES,
             "priorities": PRIORITIES,
             "accents": ACCENTS,
+            "categories": CATEGORIES,
             "today": date.today(),
         }
 
@@ -96,7 +108,7 @@ def create_app(test_config=None):
 
     @app.get("/health")
     def health():
-        return {"app": "workbench-starter", "status": "ok", "version": "1.1.0"}
+        return {"app": "studystack", "status": "ok", "version": "2.0.0"}
 
     @app.get("/")
     def index():
@@ -104,16 +116,22 @@ def create_app(test_config=None):
         status = request.args.get("status", "")
         if status not in STATUSES:
             status = ""
+        courses = db.list_courses(g.workspace_id)
+        course = request.args.get("course", "").strip()[:60]
+        if course not in courses:
+            course = ""
         view = "list" if request.args.get("view") == "list" else "board"
-        items = db.list_items(g.workspace_id, query, status)
+        items = db.list_items(g.workspace_id, query, status, course=course)
         groups = {key: [item for item in items if item["status"] == key] for key in STATUSES}
         return render_template("index.html", page="board", items=items, groups=groups,
-                               query=query, selected_status=status, view=view,
+                               query=query, selected_status=status,
+                               selected_course=course, courses=courses, view=view,
                                recent_events=db.events(g.workspace_id, 4))
 
     @app.route("/items/new", methods=["GET", "POST"])
     def new_item():
-        values = {"title": "", "description": "", "category": "General", "status": "todo", "priority": "medium", "due_date": ""}
+        values = {"title": "", "description": "", "course": "", "category": "Lecture review",
+                  "status": "todo", "priority": "medium", "due_date": ""}
         if request.args.get("status") in STATUSES:
             values["status"] = request.args["status"]
         errors = {}
@@ -123,10 +141,11 @@ def create_app(test_config=None):
                 with db.transaction() as connection:
                     db.create_item(connection, g.workspace_id, values)
                     db.log_event(connection, g.workspace_id, "added", values["title"])
-                flash("Item added. A good place to start.", "success")
+                flash("Study task added. Break it into one small next step.", "success")
                 return redirect(url_for("index"), code=303)
         return render_template("item_form.html", page="board", values=values, errors=errors,
-                               editing=False, item_id=None), 422 if errors else 200
+                               editing=False, item_id=None,
+                               courses=db.list_courses(g.workspace_id)), 422 if errors else 200
 
     @app.route("/items/<int:item_id>/edit", methods=["GET", "POST"])
     def edit_item(item_id):
@@ -139,10 +158,11 @@ def create_app(test_config=None):
                 with db.transaction() as connection:
                     db.update_item(connection, g.workspace_id, item_id, values)
                     db.log_event(connection, g.workspace_id, "edited", values["title"])
-                flash("Changes saved.", "success")
+                flash("Study task updated.", "success")
                 return redirect(url_for("index"), code=303)
         return render_template("item_form.html", page="board", values=values, errors=errors,
-                               editing=True, item_id=item_id), 422 if errors else 200
+                               editing=True, item_id=item_id,
+                               courses=db.list_courses(g.workspace_id)), 422 if errors else 200
 
     @app.post("/items/<int:item_id>/move")
     def move_item(item_id):
@@ -158,7 +178,7 @@ def create_app(test_config=None):
 
     @app.post("/items/<int:item_id>/remove")
     def remove_item(item_id):
-        # Students can follow the call to history.push() into backend/stack.py.
+        # Removing a task pushes its ID onto the LIFO recovery stack.
         with db.transaction() as connection:
             item = owned_item(item_id, archived=False)
             history = HistoryBuffer(db.load_history(connection, g.workspace_id))
@@ -166,7 +186,7 @@ def create_app(test_config=None):
             db.archive_item(connection, g.workspace_id, item_id)
             db.save_history(connection, g.workspace_id, history.to_list())
             db.log_event(connection, g.workspace_id, "removed", item["title"])
-        flash("Moved to the recovery tray. You can bring it back anytime.", "success")
+        flash("Task moved to the recovery stack. Restore will bring back the newest removal first.", "success")
         return redirect(url_for("index"), code=303)
 
     @app.get("/recovery")
@@ -246,12 +266,15 @@ def owned_item(item_id, archived=None):
 
 def validate_item(form):
     values = {key: form.get(key, "").strip() for key in
-              ("title", "description", "category", "status", "priority", "due_date")}
+              ("title", "description", "course", "category", "status", "priority", "due_date")}
+    values["course"] = values["course"] or "General"
     errors = {}
     if not 1 <= len(values["title"]) <= 100:
-        errors["title"] = "Give your item a title between 1 and 100 characters."
+        errors["title"] = "Give your task a title between 1 and 100 characters."
     if len(values["description"]) > 1500:
         errors["description"] = "Keep the description within 1,500 characters."
+    if not 1 <= len(values["course"]) <= 60:
+        errors["course"] = "Use a course label between 1 and 60 characters."
     if not 1 <= len(values["category"]) <= 30:
         errors["category"] = "Use a category between 1 and 30 characters."
     if values["status"] not in STATUSES:

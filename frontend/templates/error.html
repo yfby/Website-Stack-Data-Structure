@@ -2,4 +2,11 @@
 {% from 'macros.html' import icon %}
 {% block title %}{{ error.code }}{% endblock %}
 {% block breadcrumb %}A small detour{% endblock %}
-{% block content %}<section class="error-state"><p class="eyebrow">{{ error.code }}</p><h1>A small detour.</h1><p>{{ error.description }}</p><a class="button button-primary" href="{{ url_for('index') }}">Back to my board{{ icon('arrow', 17) }}</a></section>{% endblock %}
+{% block content %}
+<section class="error-state">
+  <p class="eyebrow">{{ error.code }}</p>
+  <h1>A small detour.</h1>
+  <p>{{ error.description }}</p>
+  <a class="button button-primary" href="{{ url_for('index') }}">Back to study board{{ icon('arrow', 17) }}</a>
+</section>
+{% endblock %}

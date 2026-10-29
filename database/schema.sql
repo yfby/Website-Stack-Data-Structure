@@ -1,7 +1,9 @@
--- DATABASE LAYER: table definitions for the Workbench starter.
+-- DATABASE LAYER: table definitions for StudyStack.
 -- Applied automatically by database/db.py when the app starts.
 -- CREATE IF NOT EXISTS preserves existing tables and records.
--- Changing this file does NOT automatically alter existing table columns.
+-- database/db.py applies small additive migrations (for example, the course
+-- column introduced by the StudyStack remix) so existing local databases keep
+-- their records.
 
 CREATE TABLE IF NOT EXISTS workspaces (
     id TEXT PRIMARY KEY,
@@ -15,6 +17,7 @@ CREATE TABLE IF NOT EXISTS items (
     workspace_id TEXT NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
+    course TEXT NOT NULL DEFAULT 'General',
     category TEXT NOT NULL DEFAULT 'General',
     status TEXT NOT NULL DEFAULT 'todo'
         CHECK(status IN ('todo', 'doing', 'done')),

@@ -1,106 +1,116 @@
-# Workbench — Full-Stack Student Starter
+# StudyStack — a recovery-first study planner
 
-**Frontend = what students see. Backend = what the website does. Database = what it remembers.**
+**StudyStack helps college students manage study tasks so they can recover
+accidentally removed tasks quickly.**
 
-This is the same remixable classroom website, reorganized so each part is easy
-to find. It uses Python + Flask + Jinja + HTML/CSS + SQLite. There is **one project
-and one server**; no Node.js build, separate frontend install, database server,
-account, or API key is required.
+Coursework arrives from several classes at once. StudyStack gives each task a
+course, category, priority, due date, and status. When a task is removed by
+mistake, it goes onto a real **LIFO stack**: the newest removal is restored
+first, the way undo is expected to behave.
 
-> **Student DSA file: [`backend/stack.py`](backend/stack.py).** The recovery buffer
-> is still deliberately **FIFO**. Turning it into a **LIFO Stack** is the activity,
-> not a completed answer included in this starter.
+> **LIFO implementation:** [`backend/stack.py`](backend/stack.py) now uses a
+> Python list as a stack. The end of the list is the top. The original FIFO
+> dictionary baseline has been replaced.
 
-## 1. Know where to work
+This is a Flask + Jinja + HTML/CSS + SQLite project. There is one server and no
+Node.js build, database server, account, or API key.
 
-| Folder | What it contains | Start here |
-| --- | --- | --- |
-| **[`frontend/`](frontend/README.md)** | Pages, styling, and icons | `frontend/templates/index.html` and `frontend/static/style.css` |
-| **[`backend/`](backend/README.md)** | Python routes, validation, and recovery logic | `backend/app.py` and **`backend/stack.py`** |
-| **[`database/`](database/README.md)** | SQLite queries, table definitions, and saved data | `database/db.py`, `database/schema.sql`, `database/data/` |
-| [`docs/`](docs/README.md) | Student activity, teacher guide, and navigation help | `docs/REPOSITORY_MAP.md` |
-| [`tests/`](tests/README.md) | Checks that the website and folder wiring work | Run `RUN_TESTS.bat` |
-| [`challenge/`](challenge/README.md) | Separate LIFO goal checks | Run `CHECK_STACK.bat` |
+## What the website does
 
-```text
-Workbench_Starter/
-|
-+-- frontend/                    WHAT YOU SEE
-|   +-- README.md
-|   +-- templates/               HTML + Jinja pages
-|   |   +-- base.html            Shared page layout and navigation
-|   |   +-- index.html           Main board/list page
-|   |   +-- item_form.html       Add/edit form
-|   |   +-- recovery.html        Removed items and restore button
-|   |   +-- activity.html        Activity page
-|   |   +-- settings.html        Workspace settings
-|   |   +-- guide.html           Student guide and project map
-|   |   +-- error.html           Friendly error page
-|   |   +-- macros.html          Reusable template pieces/icons
-|   +-- static/
-|       +-- style.css            Colors, layout, and responsive styles
-|       +-- favicon.svg          Browser tab icon
-|
-+-- backend/                     WHAT THE WEBSITE DOES
-|   +-- README.md
-|   +-- __init__.py              Makes this a Python package
-|   +-- app.py                   Flask routes and validation
-|   +-- config.py                Paths connecting the three layers
-|   +-- stack.py                 STUDENT STACK CHALLENGE
-|
-+-- database/                    WHAT THE WEBSITE REMEMBERS
-|   +-- README.md
-|   +-- __init__.py
-|   +-- db.py                    SQLite connection, queries, transactions
-|   +-- schema.sql               Definitions of the three tables
-|   +-- data/
-|       +-- .gitkeep             Keeps this empty folder in Git
-|       +-- workbench.sqlite3    Generated at first startup; not shipped
-|
-+-- docs/                        Guides and activity instructions
-+-- tests/                       Website and folder-layout checks
-+-- challenge/                   LIFO acceptance checks
-|
-+-- START_HERE.txt               Beginner setup and folder map
-+-- SETUP_WINDOWS.bat            First-time Windows setup
-+-- START_WEBSITE.bat            Start the whole website
-+-- RUN_TESTS.bat                Check website/layout behavior
-+-- CHECK_STACK.bat              Check the student's LIFO goal
-+-- run.py                       Cross-platform Python launcher
-+-- setup.sh / start.sh          macOS/Linux launchers
-+-- requirements.txt             Python dependencies
-+-- .gitignore                   Excludes local data, keys, and caches
-+-- .gitattributes               Consistent text-file line endings
+- Create, edit, move, remove, and restore study tasks.
+- Organize tasks as **To study**, **In progress**, or **Completed**.
+- Filter by status and by a concept-specific **course** field.
+- Search titles, descriptions, categories, and courses.
+- Switch between a three-column board and a compact list.
+- See a live recovery stack with the next task clearly marked **Top**.
+- Keep removed tasks' title, description, course, category, priority, due date,
+  and previous status intact when they are restored.
+- Use a separate local workspace per browser profile.
+- Customize the workspace name and accent color.
+
+Sample data contains **8 fictional college study records** such as linked-list
+review, a lab report, an exam formula sheet, and a group presentation.
+
+## Where the stack lives
+
+The LIFO code is in [`backend/stack.py`](backend/stack.py). `HistoryBuffer` keeps
+a list in bottom-to-top order:
+
+```python
+self._items = ["A", "B", "C"]   # C is the top
 ```
 
-The `.venv/` environment and `instance/.secret_key` appear locally when needed.
-They are generated support files, **not extra application layers**. Do not edit
-or upload them. The actual SQLite database belongs in **`database/data/`**.
+| Operation | Implementation | Time |
+| --- | --- | --- |
+| `push(item)` | `self._items.append(item)` | O(1) |
+| `pop()` | `self._items.pop()` | O(1) |
+| `peek()` | `self._items[-1]` | O(1) |
+| `is_empty()` | `not self._items` | O(1) |
+| `size()` | `len(self._items)` | O(1) |
+| `to_list()` | `list(self._items)` | O(n) |
 
-For a file-by-file tour and an old-to-new path map, read
-[`docs/REPOSITORY_MAP.md`](docs/REPOSITORY_MAP.md).
+The real routes in [`backend/app.py`](backend/app.py) connect the class to the
+website:
 
-## 2. Run on Windows
+- `POST /items/<id>/remove` calls `history.push(item_id)`.
+- `GET /recovery` uses `peek()`, `is_empty()`, and `size()` without removing.
+- `POST /recovery/restore` calls `history.pop()` and restores that ID.
+- `to_list()` is saved bottom-to-top in SQLite, then passed back to the
+  constructor on the next request.
 
-Install Python **3.10 or newer**, with **Add Python to PATH** enabled. Extract
-all the files into a **new folder**; do not run from inside the ZIP viewer.
-Open `Workbench_Starter` and run:
+Removing A, B, then C therefore restores **C, B, A**. See
+[`docs/STACK_EXPLANATION.md`](docs/STACK_EXPLANATION.md) for the full explanation.
+
+## Project layout
+
+```text
+.
++-- frontend/
+|   +-- templates/          HTML + Jinja pages
+|   |   +-- base.html       Shared layout, navigation, flash notices, footer
+|   |   +-- index.html      Study board, course filter, search, progress
+|   |   +-- item_form.html  Add/edit task form
+|   |   +-- recovery.html   LIFO recovery stack
+|   |   +-- activity.html   Recent actions
+|   |   +-- settings.html   Workspace name and accent
+|   |   +-- guide.html      How StudyStack works
+|   |   +-- error.html      Friendly error page
+|   |   +-- macros.html     Icons, CSRF helper, task card
+|   +-- static/
+|       +-- style.css       Warm paper/teal/coral responsive design
+|       +-- favicon.svg     Browser tab icon
++-- backend/
+|   +-- app.py              Flask routes and validation
+|   +-- config.py           Paths connecting the layers
+|   +-- stack.py            LIFO recovery stack (student challenge solution)
++-- database/
+|   +-- db.py               SQLite connections, queries, migration
+|   +-- schema.sql          Tables for workspaces, items, events
+|   +-- data/.gitkeep       Keeps the generated-data folder in Git
++-- docs/
+|   +-- STACK_EXPLANATION.md
+|   +-- TEST_LOG.md
+|   +-- CONTRIBUTIONS.md
+|   +-- STUDENT_ACTIVITY.md
+|   +-- ...other starter guides
++-- tests/                  Website, layout, and static checks
++-- challenge/check_stack.py  LIFO acceptance checks
++-- run.py                  Cross-platform launcher
++-- RUN_TESTS.bat           Windows website checks
++-- CHECK_STACK.bat         Windows stack checks
++-- requirements.txt        Flask dependency
+```
+
+## Setup and run
+
+### Windows
 
 ```powershell
 .\SETUP_WINDOWS.bat
 .\START_WEBSITE.bat
 ```
 
-Double-clicking these files also works. First-time setup needs internet for
-Flask. On later runs, only `START_WEBSITE.bat` is needed.
-
-The browser opens at **http://127.0.0.1:5000**. Keep the terminal open while
-using the website. Press **Ctrl+C** there to stop it.
-
-**Do not run `backend/app.py` directly or open the HTML files by double-clicking.**
-Use the launcher so imports, Jinja templates, and database access work together.
-
-### Manual PowerShell setup
+Or manually:
 
 ```powershell
 py -3 -m venv .venv
@@ -108,8 +118,8 @@ py -3 -m venv .venv
 .\.venv\Scripts\python.exe run.py
 ```
 
-If `py` is unavailable, use `python` instead of `py -3`. There is no need to
-activate the environment or change PowerShell's execution policy.
+The browser opens at **http://127.0.0.1:5000**. Keep the terminal open and press
+**Ctrl+C** to stop the server. Use `--port 5001` if port 5000 is busy.
 
 ### macOS / Linux
 
@@ -118,131 +128,114 @@ sh setup.sh
 sh start.sh
 ```
 
-### Another port
+Or manually:
 
-```powershell
-.\START_WEBSITE.bat --port 5001
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python run.py
 ```
 
-## 3. How the layers connect
+## Tests
 
-```text
-Browser
-   | submits an HTML form
-   v
-frontend/templates/     <-- page layout, form fields, and buttons
-   |
-   v
-backend/app.py          <-- handles the URL and checks the input
-   |                 \
-   |                  --> backend/stack.py (recovery behavior)
-   v
-database/db.py          <-- executes SQL inside a transaction
-   |
-   v
-database/data/workbench.sqlite3
-   |
-   +--> backend renders a frontend template --> browser shows the result
-```
-
-`database/schema.sql` defines the tables. The app applies it automatically at
-startup. Frontend files do **not** connect directly to the database.
-
-## 4. What already works
-
-Create and edit items; set categories, priorities, dates, and statuses; move
-between To do/In progress/Done; switch board/list views; search and filter;
-remove and restore items; view activity; customize the workspace name and
-accent. The original responsive design is preserved.
-
-Each browser profile has its own local workspace. Tabs in the same profile
-share it; another browser/private session gets a different workspace. This is
-a classroom sandbox, not an account/login system. Saved data persists across
-refreshes and restarts when the browser cookie, database, and signing key remain.
-
-## 5. The Stack activity is intentionally unfinished
-
-Edit **[`backend/stack.py`](backend/stack.py)**. The provided `HistoryBuffer`
-stores item IDs in a dictionary and takes the oldest first (FIFO). Students
-must replace its representation and operations with a real LIFO Stack.
-
-Removing A, B, then C currently restores A first. The required goal is C, B, A.
-Keep the public methods and the oldest/bottom-to-newest/top `to_list()` storage
-contract. The real routes still use this class; changing only visible card
-order is not a solution.
-
-See [`docs/STUDENT_ACTIVITY.md`](docs/STUDENT_ACTIVITY.md) for the full task.
-
-## 6. Two different checks
+Windows:
 
 ```powershell
 .\RUN_TESTS.bat
 .\CHECK_STACK.bat
 ```
 
-**RUN_TESTS** checks the supplied website and layout. It is designed to pass
-both before and after the student's Stack implementation.
+Cross-platform:
 
-**CHECK_STACK** checks the LIFO goal. Its failures are expected while the
-starter remains FIFO; they are not installation failures.
-
-Equivalent commands from the project root:
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-.\.venv\Scripts\python.exe challenge\check_stack.py
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python challenge/check_stack.py
 ```
 
-For the validation status of this delivery, see
-[`docs/VALIDATION.md`](docs/VALIDATION.md). The structural checks were run;
-Flask integration testing was blocked by package-download access in the build
-environment, so run `RUN_TESTS.bat` after setup on your machine.
+Current results are recorded in [`docs/TEST_LOG.md`](docs/TEST_LOG.md):
 
-## 7. Editing and troubleshooting
+- Website/layout/security/persistence suite: **36 tests, OK**
+- LIFO acceptance checker: **6 tests, OK**
+- Manual A/B/C, mixed-operation, persistence, empty-tray, and record-integrity
+  checks passed.
+- Existing-database migration preserved all items and added the new course field
+  with the default `General`.
 
-Open the **whole `Workbench_Starter` folder** in VS Code, not only one layer.
-After editing HTML or CSS, save and refresh (Ctrl+F5 for cached CSS). After
-editing Python, stop and restart the server. Keep all three folders together.
+## Changes made in this remix
 
-For optional local Python auto-reload, run from the project root:
+### Purpose and content
 
-```powershell
-.\.venv\Scripts\python.exe -m flask --app backend.app run --debug
+- Renamed the site **StudyStack** and rewrote page copy around college study
+  planning and quick recovery of accidental removals.
+- Added study-specific categories: lecture review, assignment, lab report, exam
+  prep, group project, reading, presentation, and career prep.
+- Replaced the starter samples with 8 realistic fictional study tasks, courses,
+  priorities, due dates, and statuses.
+
+### Backend, database, and feature
+
+- Replaced the dictionary FIFO buffer with a list-based LIFO stack while keeping
+  the `HistoryBuffer` public interface and bottom-to-top storage contract.
+- Added an `items.course` field. `database/schema.sql` defines it, and
+  `database/db.py` performs an additive migration for existing databases.
+- Added course-aware create/edit validation and a course filter on the study
+  board. Search now also matches course labels.
+- Kept CSRF protection, server-side validation, workspace isolation, archived
+  records, transactions, and all restore behavior intact.
+- Improved empty-tray handling and kept the recovery page's “next” display tied
+  to `peek()`.
+
+### Visual design and usability
+
+- Redesigned `base.html`, `index.html`, `item_form.html`, `recovery.html`, and
+  `style.css`: new responsive top navigation, warm paper background, ink-navy
+  panels, teal/coral/gold accents, serif display headings, task cards, and a
+  visual “top of stack” treatment.
+- Added a four-metric summary strip, a semester progress bar, course filter,
+  clearer stack explainer, and responsive layouts for tablet and phone widths.
+- Updated the favicon to match the stacked-lines mark.
+
+### Documentation
+
+- Added [`docs/STACK_EXPLANATION.md`](docs/STACK_EXPLANATION.md) (FIFO baseline,
+  representation, operations, complexity, persistence, and a solved bug).
+- Added [`docs/TEST_LOG.md`](docs/TEST_LOG.md) with the actual check results.
+- Added [`docs/CONTRIBUTIONS.md`](docs/CONTRIBUTIONS.md) as a team contribution
+  template.
+- Updated this README with concept, setup, tests, changes, limitations, and
+  credit.
+
+## Database migration
+
+The starter `CREATE TABLE IF NOT EXISTS` statement cannot add a column to an
+existing table. On startup, `database/db.py` checks `PRAGMA table_info(items)`
+and, if needed, runs:
+
+```sql
+ALTER TABLE items ADD COLUMN course TEXT NOT NULL DEFAULT 'General';
 ```
 
-| Problem | What to check |
-| --- | --- |
-| Python/Flask missing | Run first-time setup; use the `.venv` interpreter. |
-| Port already in use | Stop the old server or use `--port 5001`. |
-| Module not found | Start with root `run.py`/`START_WEBSITE.bat`, not a file inside `backend/`. |
-| Template not found | Keep `frontend/templates/` beside `backend/`; check `backend/config.py`. |
-| Form expired | Reload the page and submit again; cookies must be enabled. |
-| Python changes not visible | Stop/restart the server. |
-| Stack checks fail | Expected until `backend/stack.py` implements the LIFO goal. |
-| Changed schema but old table stayed the same | `CREATE TABLE IF NOT EXISTS` does not migrate existing columns. Back up data and plan an explicit migration. |
+No rows are dropped or rewritten. Existing tasks simply show `General` until
+they are edited. New databases get the `course` column directly from
+`schema.sql`.
 
-For a fresh demo, use a private browser window. To reset **all local saved data**,
-stop the server and back up then delete only the generated `workbench.sqlite3`
-and any matching `-wal`/`-shm` files in `database/data/`, plus `instance/.secret_key`
-(or the generated `instance/` folder). **Never delete `database/` itself**; it
-contains your source code and schema. Restart to create fresh data.
+## Known limitations
 
-Keeping a previous installation's saved data? Follow
-[`docs/REORGANIZATION.md`](docs/REORGANIZATION.md) before deleting anything.
+- This is a local classroom sandbox, not a production account system. Each
+  browser profile gets its own workspace through a signed session cookie.
+- There is no password login, shared team workspace, or cloud sync.
+- The recovery history is a single ordered list per workspace; it does not offer
+  multi-step redo or a separate archive browser.
+- Deleting or losing the browser cookie, local SQLite file, or signing key can
+  make that workspace inaccessible. Back up generated data if needed.
+- The interface uses system fonts so it works offline; no external font service
+  is required.
+- The course filter only lists courses currently attached to active tasks.
 
-## 8. GitHub submission
+## Credit
 
-Commit `frontend/`, `backend/`, `database/db.py`, `database/schema.sql`, the
-`.gitkeep`, docs, tests, challenge checks, root launchers, and `requirements.txt`.
-Do **not** commit `.venv/`, `instance/`, a local `.secret_key`, or generated
-SQLite files. The `.gitignore` already excludes them. Manual browser uploads
-must exclude them too.
-
-This starter listens on `127.0.0.1` for local use. Public hosting is not required.
-
-## Reference documentation
-
-- Flask application paths: https://flask.palletsprojects.com/en/stable/api/
-- Flask quickstart: https://flask.palletsprojects.com/en/stable/quickstart/
-- Flask + SQLite: https://flask.palletsprojects.com/en/stable/tutorial/database/
-- Python stacks: https://docs.python.org/3/tutorial/datastructures.html#using-lists-as-stacks
+This project began as the **Website Stack Data Structure** classroom starter by
+[franku69](https://github.com/franku69/Website-Stack-Data-Structure). The original
+frontend/backend/database organization, safety checks, and activity structure
+were retained and remixed into StudyStack. The recovery buffer was changed from
+the provided FIFO baseline to a real LIFO stack as required by the activity.

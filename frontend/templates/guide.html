@@ -1,21 +1,57 @@
 {% extends 'base.html' %}
 {% from 'macros.html' import icon %}
-{% block title %}Student guide{% endblock %}
-{% block breadcrumb %}Student guide{% endblock %}
+{% block title %}How it works{% endblock %}
+{% block breadcrumb %}How it works{% endblock %}
 {% block content %}
-<section class="page-heading"><div><p class="eyebrow">THE STARTING POINT IS YOURS</p><h1>Build on a good idea<span class="heading-dot">.</span></h1><p class="page-intro">Remix the website. Solve the Python challenge. Show how it works.</p></div></section>
-<div class="guide-intro surface"><span class="guide-number">01</span><div><h2>Make the website your own</h2><p>Choose a concept and change the pages, styling, content, and features to fit it. This could become a study planner, a reading tracker, a small inventory, or something else you can explain. Meaningful changes matter more than changing a few colors.</p></div></div>
-<div class="guide-intro surface"><span class="guide-number">02</span><div><h2>Turn recovery into a Stack feature</h2><p>The starter recovery buffer deliberately handles the <strong>oldest</strong> removed item first. Your goal is <strong>LIFO</strong>: the most recently removed item must return first.</p><p>The designated file is <code>backend/stack.py</code>. Its <code>HistoryBuffer</code> class is called by the real Flask routes. Replace the current dictionary-based buffer with your own Stack implementation, keeping its public methods usable by the website.</p><ul class="guide-list"><li>Implement <code>push</code>, <code>pop</code>, <code>peek</code>, <code>is_empty</code>, and <code>size</code>.</li><li>Keep <code>to_list()</code> in bottom-to-top order so SQLite can save and reload it.</li><li>Handle an empty Stack safely.</li><li>Use a Stack representation with efficient operations at the top.</li></ul></div></div>
-<section class="guide-example surface"><div><p class="eyebrow">THE BEHAVIOR TO DEMONSTRATE</p><h2>Remove A, then B, then C.</h2><p>Restoring must bring back <strong>C, then B, then A</strong>. Reading the next item with <code>peek()</code> must leave the Stack unchanged.</p><p>Refresh the page between operations. The database and the website should still agree.</p></div><span class="guide-example-symbol">C<br>B<br>A</span></section>
-<div class="guide-intro surface"><span class="guide-number">03</span><div><h2>Check it, then explain it</h2><p>Run <code>CHECK_STACK.bat</code> on Windows, or <code>python challenge/check_stack.py</code>. The untouched starter intentionally fails the LIFO checks. Your completed solution should pass them.</p><p>Run <code>RUN_TESTS.bat</code> to check the rest of the website. Submit your source code, a short setup guide, and evidence of your modifications. Each member should be able to explain their own contribution.</p></div></div>
-<section class="file-map surface"><h2>Find your part of the full-stack project</h2>
-<p class="page-intro">One project, three clear areas. Start with the folder that matches what you want to change.</p>
-<dl>
-<div><dt>FRONTEND</dt><dd><code>frontend/templates/</code> contains the HTML/Jinja pages. <code>frontend/static/style.css</code> controls the look and layout.</dd></div>
-<div><dt>BACKEND</dt><dd><code>backend/app.py</code> handles browser requests and input checks. <code>backend/stack.py</code> is your required Stack challenge.</dd></div>
-<div><dt>DATABASE</dt><dd><code>database/db.py</code> contains SQLite helpers and SQL queries. <code>database/schema.sql</code> defines the tables. Saved records go in <code>database/data/workbench.sqlite3</code>.</dd></div>
-<div><dt>TESTS</dt><dd><code>tests/</code> checks the working website. <code>challenge/check_stack.py</code> checks the LIFO goal separately.</dd></div>
-<div><dt>GUIDES</dt><dd><code>docs/REPOSITORY_MAP.md</code> maps each file to its job. Each main folder also has its own <code>README.md</code>.</dd></div>
-</dl><p class="preferences-note">Flow: browser form &rarr; backend route &rarr; Python logic and SQLite &rarr; rendered HTML response. Launch from the project root with <code>START_WEBSITE.bat</code>.</p></section>
-<p class="preferences-note">Read <code>docs/STUDENT_ACTIVITY.md</code> for the full submission checklist.</p>
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">A STUDY PLANNER WITH A SAFETY NET</p>
+    <h1>Plan the work. Recover the slip-ups<span class="heading-dot">.</span></h1>
+    <p class="page-intro">StudyStack is a college study board. Its recovery tray is a real LIFO stack: the last task removed is the first task restored.</p>
+  </div>
+</section>
+
+<div class="guide-intro surface">
+  <span class="guide-number">01</span>
+  <div>
+    <h2>What the website is for</h2>
+    <p>College work arrives from several courses at once. StudyStack keeps each task visible by status, course, priority, and due date. A student can add a task, move it through the board, and remove it when it no longer belongs.</p>
+    <p>The recovery stack protects against accidental removals. Instead of hunting through an archive, the student restores the newest removed task first — exactly the behavior people expect from undo.</p>
+  </div>
+</div>
+
+<div class="guide-intro surface">
+  <span class="guide-number">02</span>
+  <div>
+    <h2>How the stack works</h2>
+    <p>The stack lives in <code>backend/stack.py</code>. Its <code>HistoryBuffer</code> class stores removed task IDs in a Python list. The end of the list is the top. Adding a removal uses <code>push()</code>; restoring uses <code>pop()</code>; the recovery page checks the next task with <code>peek()</code>.</p>
+    <ul class="guide-list">
+      <li><code>push()</code>, <code>pop()</code>, <code>peek()</code>, and <code>size()</code> are O(1).</li>
+      <li><code>to_list()</code> is O(n) because it copies the stack for SQLite storage.</li>
+      <li>The saved list is bottom-to-top, so reloading rebuilds the same stack.</li>
+      <li>Refreshing or peeking never removes a task.</li>
+    </ul>
+  </div>
+</div>
+
+<section class="guide-example surface">
+  <div>
+    <p class="eyebrow">THE DEMONSTRATION</p>
+    <h2>Remove A, then B, then C.</h2>
+    <p>The stack looks like <strong>A → B → C</strong> with C on top. Restoring returns <strong>C, then B, then A</strong>. An empty recovery tray shows a friendly message instead of an error.</p>
+  </div>
+  <span class="guide-example-symbol">C<br>B<br>A</span>
+</section>
+
+<section class="file-map surface">
+  <h2>Find your part of the project</h2>
+  <p class="page-intro">One Flask project, three clear layers.</p>
+  <dl>
+    <div><dt>FRONTEND</dt><dd><code>frontend/templates/</code> contains the HTML/Jinja pages. <code>frontend/static/style.css</code> controls the responsive look and layout.</dd></div>
+    <div><dt>BACKEND</dt><dd><code>backend/app.py</code> handles routes and validation. <code>backend/stack.py</code> contains the LIFO recovery stack.</dd></div>
+    <div><dt>DATABASE</dt><dd><code>database/db.py</code> contains SQLite helpers, <code>database/schema.sql</code> defines the tables, and saved records live in <code>database/data/workbench.sqlite3</code>.</dd></div>
+    <div><dt>CHECKS</dt><dd>Run <code>RUN_TESTS.bat</code> for the website and <code>CHECK_STACK.bat</code> for the stack behavior. Details are in <code>docs/STUDENT_ACTIVITY.md</code>.</dd></div>
+  </dl>
+  <p class="preferences-note">Flow: browser form &rarr; Flask route &rarr; Python stack and SQLite helpers &rarr; rendered page. Launch from the project root with <code>START_WEBSITE.bat</code> or <code>python run.py</code>.</p>
+</section>
 {% endblock %}

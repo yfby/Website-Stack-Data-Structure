@@ -1,19 +1,78 @@
 {% extends 'base.html' %}
 {% from 'macros.html' import icon, csrf %}
-{% block title %}{{ 'Edit item' if editing else 'Add an item' }}{% endblock %}
-{% block breadcrumb %}{{ 'Edit item' if editing else 'Add an item' }}{% endblock %}
+{% block title %}{{ 'Edit study task' if editing else 'New study task' }}{% endblock %}
+{% block breadcrumb %}{{ 'Edit study task' if editing else 'New study task' }}{% endblock %}
 {% block content %}
-<a class="back-link" href="{{ url_for('index') }}">{{ icon('back', 16) }}Back to my board</a>
-<section class="page-heading compact-heading"><div><p class="eyebrow">A SMALL STEP FORWARD</p><h1>{{ 'A little fine-tuning' if editing else 'Something worth making' }}<span class="heading-dot">.</span></h1><p class="page-intro">{{ 'Keep the details up to date as your idea takes shape.' if editing else 'Give your next idea a place to begin.' }}</p></div></section>
-{% if errors %}<div class="notice notice-error" role="alert">Check the highlighted fields below. Your changes have not been saved.</div>{% endif %}
+<a class="back-link" href="{{ url_for('index') }}">{{ icon('back', 16) }}Back to study board</a>
+<section class="page-heading compact-heading">
+  <div>
+    <p class="eyebrow">{{ 'KEEP THE PLAN CURRENT' if editing else 'ONE SMALL NEXT STEP' }}</p>
+    <h1>{{ 'Fine-tune the task' if editing else 'What needs your attention?' }}<span class="heading-dot">.</span></h1>
+    <p class="page-intro">{{ 'Update the details so the task still matches what your course needs.' if editing else 'Give the work a home. A clear task is easier to start and easier to recover.' }}</p>
+  </div>
+</section>
+
+{% if errors %}<div class="notice notice-error" role="alert">{{ icon('leaf', 18) }}<span>Check the highlighted fields below. Your changes have not been saved.</span></div>{% endif %}
+
 <form method="post" class="editor-form" action="{{ url_for('edit_item', item_id=item_id) if editing else url_for('new_item') }}">
-{{ csrf(csrf_token) }}
-<div class="editor-grid"><section class="editor-main surface"><h2>The essentials</h2><p class="section-description">A clear title and a little context go a long way.</p>
-  <div class="field"><label for="title">Item title <span>*</span></label><input id="title" name="title" value="{{ values.title }}" placeholder="What would you like to work on?" required maxlength="100" {% if errors.title %}aria-invalid="true" aria-describedby="error-title"{% endif %}>{% if errors.title %}<p class="field-error" id="error-title">{{ errors.title }}</p>{% endif %}</div>
-  <div class="field"><label for="description">Description <small>Optional</small></label><textarea id="description" name="description" rows="7" maxlength="1500" placeholder="Add notes, a starting point, or what finished looks like..." {% if errors.description %}aria-invalid="true"{% endif %}>{{ values.description }}</textarea>{% if errors.description %}<p class="field-error">{{ errors.description }}</p>{% endif %}<p class="field-help">Keep it useful. You can always come back and add more.</p></div>
-  <div class="field"><label for="category">Category <span>*</span></label><input id="category" name="category" value="{{ values.category }}" maxlength="30" required placeholder="Design, Research, Personal..." {% if errors.category %}aria-invalid="true"{% endif %}>{% if errors.category %}<p class="field-error">{{ errors.category }}</p>{% endif %}</div>
-</section><aside class="editor-details surface"><h2>A little structure</h2><div class="field"><label for="status">Status</label><select name="status" id="status">{% for key, label in statuses.items() %}<option value="{{ key }}" {{ 'selected' if values.status == key else '' }}>{{ label }}</option>{% endfor %}</select>{% if errors.status %}<p class="field-error">{{ errors.status }}</p>{% endif %}</div><div class="field"><label for="priority">Priority</label><select name="priority" id="priority">{% for key, label in priorities.items() %}<option value="{{ key }}" {{ 'selected' if values.priority == key else '' }}>{{ label }}</option>{% endfor %}</select>{% if errors.priority %}<p class="field-error">{{ errors.priority }}</p>{% endif %}</div><div class="field"><label for="due_date">Due date <small>Optional</small></label><input id="due_date" name="due_date" type="date" value="{{ values.due_date or '' }}">{% if errors.due_date %}<p class="field-error">{{ errors.due_date }}</p>{% endif %}</div><div class="gentle-tip">{{ icon('leaf', 25) }}<p>Progress has a way of starting small.</p></div></aside></div>
-<div class="form-actions"><a class="button button-secondary" href="{{ url_for('index') }}">Cancel</a><button class="button button-primary" type="submit">{{ icon('check', 18) }}{{ 'Save changes' if editing else 'Create item' }}</button></div>
+  {{ csrf(csrf_token) }}
+  <div class="editor-grid">
+    <section class="editor-main surface">
+      <h2>Study task details</h2>
+      <p class="section-description">Name the work, note what “finished” looks like, and connect it to a course.</p>
+      <div class="field">
+        <label for="title">Task title <span>*</span></label>
+        <input id="title" name="title" value="{{ values.title }}" placeholder="e.g. Draft problem set 4" required maxlength="100" {% if errors.title %}aria-invalid="true" aria-describedby="error-title"{% endif %}>
+        {% if errors.title %}<p class="field-error" id="error-title">{{ errors.title }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="description">Description <small>Optional</small></label>
+        <textarea id="description" name="description" rows="7" maxlength="1500" placeholder="What exactly needs doing? Add the page numbers, questions, or a definition of done..." {% if errors.description %}aria-invalid="true"{% endif %}>{{ values.description }}</textarea>
+        {% if errors.description %}<p class="field-error">{{ errors.description }}</p>{% endif %}
+        <p class="field-help">A useful note now saves a confusing scramble later.</p>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="course">Course or context <small>Optional</small></label>
+          <input id="course" name="course" value="{{ values.course or '' }}" maxlength="60" list="course-options" placeholder="CS 210 · Data Structures" {% if errors.course %}aria-invalid="true"{% endif %}>
+          <datalist id="course-options">{% for course in courses %}<option value="{{ course }}">{% endfor %}</datalist>
+          {% if errors.course %}<p class="field-error">{{ errors.course }}</p>{% endif %}
+        </div>
+        <div class="field">
+          <label for="category">Study category <span>*</span></label>
+          <input id="category" name="category" value="{{ values.category }}" maxlength="30" required list="category-options" placeholder="Lecture review, Assignment..." {% if errors.category %}aria-invalid="true"{% endif %}>
+          <datalist id="category-options">{% for category in categories %}<option value="{{ category }}">{% endfor %}</datalist>
+          {% if errors.category %}<p class="field-error">{{ errors.category }}</p>{% endif %}
+        </div>
+      </div>
+    </section>
+
+    <aside class="editor-details surface">
+      <h2>Plan the work</h2>
+      <p class="section-description">These details power the board filters and the recovery stack.</p>
+      <div class="field">
+        <label for="status">Status</label>
+        <select name="status" id="status">{% for key, label in statuses.items() %}<option value="{{ key }}" {{ 'selected' if values.status == key else '' }}>{{ label }}</option>{% endfor %}</select>
+        {% if errors.status %}<p class="field-error">{{ errors.status }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="priority">Priority</label>
+        <select name="priority" id="priority">{% for key, label in priorities.items() %}<option value="{{ key }}" {{ 'selected' if values.priority == key else '' }}>{{ label }}</option>{% endfor %}</select>
+        {% if errors.priority %}<p class="field-error">{{ errors.priority }}</p>{% endif %}
+      </div>
+      <div class="field">
+        <label for="due_date">Due date <small>Optional</small></label>
+        <input id="due_date" name="due_date" type="date" value="{{ values.due_date or '' }}">
+        {% if errors.due_date %}<p class="field-error">{{ errors.due_date }}</p>{% endif %}
+      </div>
+      <div class="gentle-tip">{{ icon('archive', 24) }}<p>Removing a task is safe. It goes on top of your recovery stack.</p></div>
+    </aside>
+  </div>
+  <div class="form-actions">
+    <a class="button button-secondary" href="{{ url_for('index') }}">Cancel</a>
+    <button class="button button-primary" type="submit">{{ icon('check', 18) }}{{ 'Save changes' if editing else 'Add to my board' }}</button>
+  </div>
 </form>
-{% if editing %}<div class="remove-section"><div><h3>Need a little more space?</h3><p>Move this item to the recovery tray. Its details stay saved.</p></div><form method="post" action="{{ url_for('remove_item', item_id=item_id) }}">{{ csrf(csrf_token) }}<button class="button button-secondary" type="submit">{{ icon('archive', 17) }}Move to recovery tray</button></form></div>{% endif %}
+
+{% if editing %}<div class="remove-section"><div><h3>Remove this task?</h3><p>It will leave the board but keep every detail in the recovery stack.</p></div><form method="post" action="{{ url_for('remove_item', item_id=item_id) }}">{{ csrf(csrf_token) }}<button class="button button-secondary" type="submit">{{ icon('archive', 17) }}Move to recovery stack</button></form></div>{% endif %}
 {% endblock %}

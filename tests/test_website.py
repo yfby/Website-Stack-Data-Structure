@@ -59,7 +59,7 @@ class WebsiteTests(unittest.TestCase):
             with self.subTest(path=path):
                 response = self.client.get(path)
                 self.assertEqual(response.status_code, 200)
-                self.assertIn(b"workbench", response.data)
+                self.assertIn(b"StudyStack", response.data)
         for path in ["/static/style.css", "/static/favicon.svg"]:
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200)
@@ -69,7 +69,7 @@ class WebsiteTests(unittest.TestCase):
         self.client.get("/")
         self.client.get("/activity")
         with self.app.app_context():
-            self.assertEqual(db.stats(self.workspace_id())["total"], 6)
+            self.assertEqual(db.stats(self.workspace_id())["total"], 8)
 
     def test_create_edit_and_move_item(self):
         item_id = self.add("First draft")
@@ -80,6 +80,17 @@ class WebsiteTests(unittest.TestCase):
         self.assertEqual(self.item(item_id)["category"], "Writing")
         self.assertEqual(self.post(f"/items/{item_id}/move", {"status": "done"}).status_code, 303)
         self.assertEqual(self.item(item_id)["status"], "done")
+
+    def test_course_field_survives_save_and_filters_the_board(self):
+        course = "CS 210 · Data Structures"
+        item_id = self.add("Review graph traversal", course=course)
+        self.assertEqual(self.item(item_id)["course"], course)
+        self.post(f"/items/{item_id}/edit", self.fields(title="Review graph traversal", course="CS 310 · Databases"))
+        self.assertEqual(self.item(item_id)["course"], "CS 310 · Databases")
+        page = self.client.get("/", query_string={"course": "CS 310 · Databases", "view": "list"})
+        result_table = page.data.split(b'<table class="items-table">', 1)[1].split(b'</table>', 1)[0]
+        self.assertIn(b"Review graph traversal", result_table)
+        self.assertNotIn(b"Review linked-list notes", result_table)
 
     def test_restore_uses_the_class_and_keeps_original_details(self):
         first = self.add("First", status="doing", priority="high")
@@ -130,7 +141,7 @@ class WebsiteTests(unittest.TestCase):
             with self.subTest(changes=list(changes)):
                 self.assertEqual(self.post("/items/new", self.fields(**changes)).status_code, 422)
         with self.app.app_context():
-            self.assertEqual(db.stats(self.workspace_id())["total"], 6)
+            self.assertEqual(db.stats(self.workspace_id())["total"], 8)
 
     def test_invalid_status_action_does_not_change_item(self):
         item_id = self.add("Keep my status")
@@ -176,7 +187,7 @@ class WebsiteTests(unittest.TestCase):
         item_id = self.add("Robert'); DROP TABLE items;--")
         self.assertIn("DROP TABLE", self.item(item_id)["title"])
         with self.app.app_context():
-            self.assertEqual(db.stats(self.workspace_id())["total"], 7)
+            self.assertEqual(db.stats(self.workspace_id())["total"], 9)
 
     def test_workspace_preferences_persist(self):
         response = self.post("/settings", {"name": "Studio North", "accent": "plum"})

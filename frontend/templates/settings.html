@@ -3,7 +3,23 @@
 {% block title %}Preferences{% endblock %}
 {% block breadcrumb %}Preferences{% endblock %}
 {% block content %}
-<section class="page-heading"><div><p class="eyebrow">SETTLE IN</p><h1>A space that feels like you<span class="heading-dot">.</span></h1><p class="page-intro">A name and a little color can make a place your own.</p></div></section>
-<form method="post" class="preferences-form surface">{{ csrf(csrf_token) }}<h2>Workspace preferences</h2><div class="field"><label for="name">Workspace name</label><input id="name" name="name" value="{{ values.name }}" required maxlength="40">{% if errors.name %}<p class="field-error">{{ errors.name }}</p>{% endif %}</div><fieldset class="accent-fieldset"><legend>Accent color</legend><div class="accent-options">{% for key, label in accents.items() %}<label class="accent-option"><input type="radio" name="accent" value="{{ key }}" {{ 'checked' if values.accent == key else '' }}><span class="swatch swatch-{{ key }}"></span><span>{{ label }}</span></label>{% endfor %}</div>{% if errors.accent %}<p class="field-error">{{ errors.accent }}</p>{% endif %}</fieldset><div class="form-actions"><button class="button button-primary" type="submit">{{ icon('check', 18) }}Save preferences</button></div></form>
-<p class="preferences-note">Want to take this further? <a href="{{ url_for('guide') }}">Explore the student guide</a> and make the website your own.</p>
+<section class="page-heading">
+  <div>
+    <p class="eyebrow">MAKE THE SPACE YOURS</p>
+    <h1>Set up your study corner<span class="heading-dot">.</span></h1>
+    <p class="page-intro">Name the workspace and choose the accent that helps you settle into the semester.</p>
+  </div>
+</section>
+<form method="post" class="preferences-form surface">
+  {{ csrf(csrf_token) }}
+  <h2>Workspace preferences</h2>
+  <div class="field"><label for="name">Workspace name</label><input id="name" name="name" value="{{ values.name }}" required maxlength="40">{% if errors.name %}<p class="field-error">{{ errors.name }}</p>{% endif %}</div>
+  <fieldset class="accent-fieldset">
+    <legend>Accent color</legend>
+    <div class="accent-options">{% for key, label in accents.items() %}<label class="accent-option"><input type="radio" name="accent" value="{{ key }}" {{ 'checked' if values.accent == key else '' }}><span class="swatch swatch-{{ key }}"></span><span>{{ label }}</span></label>{% endfor %}</div>
+    {% if errors.accent %}<p class="field-error">{{ errors.accent }}</p>{% endif %}
+  </fieldset>
+  <div class="form-actions"><button class="button button-primary" type="submit">{{ icon('check', 18) }}Save preferences</button></div>
+</form>
+<p class="preferences-note">Want to understand the recovery feature? <a href="{{ url_for('guide') }}">Read how StudyStack works</a>.</p>
 {% endblock %}

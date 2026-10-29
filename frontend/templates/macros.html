@@ -25,16 +25,17 @@
 
 {% macro item_card(item, token, statuses) -%}
 <article class="item-card priority-{{ item.priority }}" data-item-id="{{ item.id }}">
-  <div class="card-top"><span class="category category-{{ item.category|lower|replace(' ', '-') }}">{{ item.category }}</span>
-    <form method="post" action="{{ url_for('remove_item', item_id=item.id) }}">{{ csrf(token) }}<button class="icon-button remove-button" type="submit" aria-label="Move {{ item.title }} to recovery tray" title="Move to recovery tray">{{ icon('archive', 17) }}</button></form>
+  <div class="card-top"><span class="category category-{{ item.category|lower|replace(' ', '-')|replace('·', '') }}">{{ item.category }}</span>
+    <form method="post" action="{{ url_for('remove_item', item_id=item.id) }}">{{ csrf(token) }}<button class="icon-button remove-button" type="submit" aria-label="Move {{ item.title }} to recovery stack" title="Move to recovery stack">{{ icon('archive', 17) }}</button></form>
   </div>
   <h3><a href="{{ url_for('edit_item', item_id=item.id) }}">{{ item.title }}</a></h3>
   {% if item.description %}<p class="card-description">{{ item.description }}</p>{% endif %}
+  <p class="card-course">{{ icon('book', 13) }}<span>{{ item.course }}</span></p>
   <div class="card-meta"><span class="priority-label"><i></i>{{ item.priority|capitalize }}</span><span class="due-date">{{ icon('clock', 13) }}{{ item.due_date|short_date }}</span></div>
   <div class="card-bottom">
     {% set next_status = 'doing' if item.status == 'todo' else ('done' if item.status == 'doing' else 'todo') %}
-    <form method="post" action="{{ url_for('move_item', item_id=item.id) }}">{{ csrf(token) }}<input type="hidden" name="status" value="{{ next_status }}"><button class="text-button" type="submit">{% if item.status == 'todo' %}Start item{% elif item.status == 'doing' %}Mark done{% else %}Reopen{% endif %}{{ icon('arrow', 14) }}</button></form>
-    <a class="icon-button" href="{{ url_for('edit_item', item_id=item.id) }}" aria-label="Edit {{ item.title }}" title="Edit item">{{ icon('edit', 15) }}</a>
+    <form method="post" action="{{ url_for('move_item', item_id=item.id) }}">{{ csrf(token) }}<input type="hidden" name="status" value="{{ next_status }}"><button class="text-button" type="submit">{% if item.status == 'todo' %}Start task{% elif item.status == 'doing' %}Mark complete{% else %}Reopen{% endif %}{{ icon('arrow', 14) }}</button></form>
+    <a class="icon-button" href="{{ url_for('edit_item', item_id=item.id) }}" aria-label="Edit {{ item.title }}" title="Edit task">{{ icon('edit', 15) }}</a>
   </div>
 </article>
 {%- endmacro %}

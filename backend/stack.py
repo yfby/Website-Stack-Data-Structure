@@ -1,58 +1,58 @@
 """BACKEND / STUDENT MODIFICATION ZONE: backend/stack.py.
 
-This RUNNABLE starter is deliberately NOT a stack yet. It keeps records in a
-dictionary and takes the oldest record first (FIFO). The recovery tray calls
-this class directly, so changing this file changes the real website.
+This module implements the recovery tray as a real LIFO Stack.
 
-YOUR CHALLENGE: replace the storage and operations with a real LIFO Stack.
-Keep the public methods below so backend/app.py can continue calling them. You may
-rename your class to Stack and add `HistoryBuffer = Stack` at the bottom.
+Representation
+--------------
+``self._items`` is a Python list kept in bottom-to-top order:
+
+* index 0 is the oldest removed item (the bottom of the stack)
+* the last index is the newest removed item (the top of the stack)
+
+Because every operation works at the end of the list, ``push``, ``pop``,
+``peek``, and ``size`` are O(1). ``to_list`` copies the whole list, so it is
+O(n) and preserves the bottom-to-top order the database stores.
 
 Storage contract: to_list() returns values from oldest/bottom to newest/top.
 The database saves that list and passes it to the constructor next request.
-Do not change that contract when you change the removal rule.
 """
 
 
 class HistoryBuffer:
-    """Working FIFO baseline. Students must turn this into a LIFO structure."""
+    """A LIFO stack of removed item IDs.
+
+    The public name is kept for ``backend/app.py`` and ``challenge/check_stack.py``.
+    """
 
     def __init__(self, items=None):
-        # TODO: replace this dictionary with your chosen stack representation.
-        values = list(items) if items is not None else []
-        self._records = {index: value for index, value in enumerate(values)}
-        self._next_key = len(values)
+        # Copy the input so the stack owns its storage and never mutates the
+        # caller's list. Saved values arrive in bottom-to-top order.
+        self._items = list(items) if items is not None else []
 
     def push(self, item):
-        """Record one removed item's ID."""
-        # TODO: implement a stack push.
-        self._records[self._next_key] = item
-        self._next_key += 1
+        """Add one removed item's ID to the top of the stack."""
+        self._items.append(item)
 
     def pop(self):
-        """Take the next ID. Baseline currently takes the OLDEST one."""
-        # TODO: implement LIFO removal and keep empty-history handling.
+        """Remove and return the top (most recently pushed) item ID."""
         if self.is_empty():
             raise IndexError("The recovery tray is empty.")
-        oldest_key = min(self._records)
-        return self._records.pop(oldest_key)
+        return self._items.pop()
 
     def peek(self):
-        """Read the next ID without removing it."""
-        # TODO: make this agree with the top of your stack.
+        """Return the top item ID without removing it."""
         if self.is_empty():
             raise IndexError("The recovery tray is empty.")
-        oldest_key = min(self._records)
-        return self._records[oldest_key]
+        return self._items[-1]
 
     def is_empty(self):
         """True when there are no recovery records."""
-        return len(self._records) == 0
+        return not self._items
 
     def size(self):
         """Number of recovery records."""
-        return len(self._records)
+        return len(self._items)
 
     def to_list(self):
-        """Return a NEW list in insertion order, ready to save in SQLite."""
-        return [self._records[key] for key in sorted(self._records)]
+        """Return a NEW list in bottom-to-top order, ready to save in SQLite."""
+        return list(self._items)

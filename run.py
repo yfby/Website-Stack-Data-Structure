@@ -14,7 +14,7 @@ def open_when_ready(url):
     for attempt in range(40):
         try:
             with urllib.request.urlopen(url + "/health", timeout=1) as response:
-                if json.load(response).get("app") == "workbench-starter":
+                if json.load(response).get("app") == "studystack":
                     webbrowser.open(url)
                     return
         except (OSError, ValueError):
@@ -23,7 +23,7 @@ def open_when_ready(url):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Start the Workbench classroom website.")
+    parser = argparse.ArgumentParser(description="Start the StudyStack study planner.")
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "5000")))
     parser.add_argument("--no-browser", action="store_true", help="Keep the browser closed.")
     arguments = parser.parse_args()
@@ -40,10 +40,10 @@ def main():
 
     from backend.app import create_app
     app = create_app()
-    print("\nWORKBENCH IS STARTING")
+    print("\nSTUDYSTACK IS STARTING")
     print("Open: " + url)
     print("Frontend: frontend/templates/ and frontend/static/")
-    print("Backend:  backend/app.py | Student challenge: backend/stack.py")
+    print("Backend:  backend/app.py | LIFO stack: backend/stack.py")
     print("Database: " + app.config["DATABASE"])
     print("Keep this window open. Press Ctrl+C to stop.")
     print("After changing Python code, stop and restart the server.\n")
