@@ -21,3 +21,6 @@ database/data/*
 # Editor/OS clutter
 .DS_Store
 Thumbs.db
+
+#uv
+uv.lock
