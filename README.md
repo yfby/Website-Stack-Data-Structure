@@ -103,6 +103,13 @@ Removing A, B, then C therefore restores **C, B, A**. See
 
 ## Setup and run
 
+
+### UV method
+
+```powershell
+uv run run.py
+```
+
 ### Windows
 
 ```powershell
